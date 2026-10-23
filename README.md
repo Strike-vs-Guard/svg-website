@@ -5,7 +5,7 @@ The homepage and documentation for Strike vs Guard (SVG), the multi-drone ground
 The layout follows the [AM-Bench website](https://ambench.github.io/): a React/TypeScript homepage built with
 Vite, and a `docs/` section built with Zensical and served at `/docs/`.
 
-Every push to `main` deploys the site to https://cindy-woo.github.io/svg-website/ through
+Every push to `main` deploys the site to https://strike-vs-guard.github.io/svg-website/ through
 `.github/workflows/deploy.yml`. The workflow derives the site path from the repository name (`/svg-website/` here, `/` for a repo named `<owner>.github.io`), so the same code deploys from a renamed or copied repository; `base` in `vite.config.ts` only sets the local default.
 In code, build site paths with `withBase()` from `src/data/media.ts` rather than writing `/static/...` directly.
 
