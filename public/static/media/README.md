@@ -1,14 +1,11 @@
-# Media placeholders
+# Homepage media
 
-The homepage shows a "media planned" card wherever a file is missing. To add media:
+- `videos/`: flight recordings for the Flights section, in lights-on / lights-off pairs:
+  `<name>-on.mp4` and `<name>-off.mp4` (1080p H.264, no audio, faststart), each with a `.jpg` poster
+  of the same name. The two files of a pair have the same length and are lined up on the mission start,
+  so the light switch keeps the playback position.
+- `figures/`: the hero animation (`strike-vs-guard.gif`), the ground-station screenshot and the system diagram.
+- `photos/`: photos of the drones and the flight room.
 
-1. Drop the file into the right folder:
-   - `videos/` — MP4 clips (H.264). Put a poster frame beside each one as a `.jpg` with the
-     same name (`squeeze.mp4` + `squeeze.jpg`).
-   - `photos/` — JPG/PNG photos of the drones, the mocap room and the team.
-   - `figures/` — diagrams, plots and screenshots (PNG or SVG).
-2. Open `src/data/media.ts` and set the `src` of the matching entry to the file's path,
-   for example `"/static/media/videos/squeeze.mp4"`.
-
-Every slot the site expects is listed in `src/data/media.ts`, with its suggested
-file name in the `suggested` field.
+`src/data/media.ts` lists the images; `src/data/project.ts` points each scenario at its video pair with
+`flightPair("<name>")`.

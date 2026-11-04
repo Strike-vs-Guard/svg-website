@@ -1,34 +1,29 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { media, releaseResources, withBase, type MediaFraming, type MediaSlot } from "./data/media";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { media, releaseResources, withBase, type FlightPair, type Lighting } from "./data/media";
 import {
-  affiliations,
-  authors,
-  axes,
+  affiliation,
   basestationFeatures,
-  experiments,
-  findings,
-  limitations,
+  capabilities,
+  configUrl,
+  flights,
+  layers,
+  lessons,
+  overlayLegend,
   packagePath,
-  pipeline,
+  phases,
   repoBase,
+  rules,
   safetyLayers,
-  scenarioGroups,
   stats,
-  type Scenario,
 } from "./data/project";
 import { useUrlChoice } from "./hooks/useUrlChoice";
 
-// Only slots with a file are shown; the galleries disappear when none has one.
-const modeGallery = [media.modeSim, media.modeReal, media.modeHybrid].filter((slot) => slot.src);
-const findingPlots = [media.plotGoalLaw, media.plotFence].filter((slot) => slot.src);
-
 const navItems = [
-  { id: "system", label: "System" },
-  { id: "safety", label: "Safety" },
-  { id: "scenarios", label: "Scenarios" },
-  { id: "experiments", label: "Experiments" },
+  { id: "game", label: "The game" },
+  { id: "controller", label: "Controller" },
+  { id: "flights", label: "Flights" },
   { id: "ground-station", label: "Ground station" },
-  { id: "findings", label: "Findings" },
+  { id: "lessons", label: "Lessons" },
 ] as const;
 
 function useInitialHashTarget() {
@@ -42,15 +37,13 @@ function useInitialHashTarget() {
         if (!hash) return;
         const target = document.getElementById(decodeURIComponent(hash));
         if (!target) return;
-
         const root = document.documentElement;
-        const previousScrollBehavior = root.style.scrollBehavior;
+        const previous = root.style.scrollBehavior;
         root.style.scrollBehavior = "auto";
         target.scrollIntoView({ block: "start" });
-        root.style.scrollBehavior = previousScrollBehavior;
+        root.style.scrollBehavior = previous;
       });
     };
-
     scrollToHash();
     window.addEventListener("hashchange", scrollToHash);
     return () => {
@@ -63,7 +56,6 @@ function useInitialHashTarget() {
 function useNearViewport<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [isNear, setIsNear] = useState(false);
-
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
@@ -78,150 +70,18 @@ function useNearViewport<T extends HTMLElement>() {
           observer.disconnect();
         }
       },
-      { rootMargin: "320px" },
+      { rootMargin: "400px" },
     );
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-
   return { ref, isNear };
 }
 
-function VideoFrame({
-  src,
-  label,
-  className = "",
-  describedBy,
-  framing = "camera",
-}: {
-  src: string;
-  label: string;
-  className?: string;
-  describedBy?: string;
-  framing?: MediaFraming;
-}) {
-  const { ref, isNear } = useNearViewport<HTMLDivElement>();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  useEffect(() => setIsPlaying(false), [src]);
-
-  const togglePlayback = async () => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (video.paused) {
-      try {
-        await video.play();
-      } catch {
-        setIsPlaying(false);
-      }
-    } else {
-      video.pause();
-    }
-  };
-
-  return (
-    <div
-      ref={ref}
-      className={`video-frame is-${framing} ${isPlaying ? "is-playing" : "is-paused"} ${className}`}
-      style={framing === "full" ? { aspectRatio: "1920 / 552" } : undefined}
-    >
-      {isNear ? (
-        <>
-          <video
-            ref={videoRef}
-            key={src}
-            onError={() => setFailedSrc(src)}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            muted
-            loop
-            playsInline
-            preload="none"
-            poster={src.replace(/\.mp4$/, ".jpg")}
-            aria-label={label}
-            aria-describedby={describedBy}
-          >
-            <source src={src} type="video/mp4" />
-          </video>
-          {failedSrc !== src && (
-            <button
-              className="video-toggle"
-              type="button"
-              aria-label={`${isPlaying ? "Pause" : "Play"} ${label}`}
-              onClick={togglePlayback}
-            >
-              <span aria-hidden="true">{isPlaying ? "Ⅱ" : "▶"}</span>
-            </button>
-          )}
-        </>
-      ) : (
-        <div className="video-skeleton" aria-hidden="true" />
-      )}
-      {failedSrc === src && <p className="video-error" role="status">Video unavailable. <a href={src}>Open the clip directly</a>.</p>}
-    </div>
-  );
-}
-
-// Renders a media slot. A slot with no file renders nothing: the text around it stands alone.
-function MediaFrame({
-  slot,
-  describedBy,
-  className = "",
-}: {
-  slot: MediaSlot;
-  describedBy?: string;
-  className?: string;
-}) {
-  if (slot.src && slot.kind === "video") {
-    return <VideoFrame src={slot.src} label={slot.label} describedBy={describedBy} className={className} framing={slot.framing} />;
-  }
-  if (slot.src) {
-    return (
-      <a className={`media-image ${className}`} href={slot.src} target="_blank" rel="noreferrer" aria-label={`Enlarge: ${slot.label}`}>
-        <img src={slot.src} alt={slot.label} loading="lazy" />
-      </a>
-    );
-  }
-  return null;
-}
-
-// What a filled slot shows, with a link to the file itself (the full three-pane recording).
-function MediaCaption({ slot, className = "" }: { slot: MediaSlot; className?: string }) {
-  if (!slot.src || !slot.caption) return null;
-  return (
-    <p className={`media-caption ${className}`}>
-      {slot.caption}{" "}
-      <a href={slot.src} target="_blank" rel="noreferrer">Full recording ↗</a>
-    </p>
-  );
-}
-
-function SectionIntro({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="section-intro">
-      <div className="section-intro-grid">
-        <h2>{title}</h2>
-        <div className="section-intro-copy">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-// Arrow-key, Home and End navigation shared by the tab lists below.
-function nextTabIndex(event: ReactKeyboardEvent<HTMLButtonElement>, current: number, count: number) {
-  const direction = event.key === "ArrowRight" || event.key === "ArrowDown"
-    ? 1
-    : event.key === "ArrowLeft" || event.key === "ArrowUp"
-      ? -1
-      : 0;
+// Arrow-key, Home and End navigation for tab lists and button groups.
+function nextIndex(event: ReactKeyboardEvent<HTMLButtonElement>, current: number, count: number) {
+  const direction =
+    event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
   if (direction === 0 && event.key !== "Home" && event.key !== "End") return null;
   event.preventDefault();
   if (event.key === "Home") return 0;
@@ -229,261 +89,245 @@ function nextTabIndex(event: ReactKeyboardEvent<HTMLButtonElement>, current: num
   return (current + direction + count) % count;
 }
 
-function SystemPipeline() {
+function SectionHead({ kicker, title, children }: { kicker: string; title: string; children?: ReactNode }) {
   return (
-    <ol className="svg-pipeline" aria-label="Control pipeline, one tick">
-      {pipeline.map((step, index) => (
-        <li className={`svg-pipeline-step is-${step.id}`} key={step.id}>
-          <span className="svg-pipeline-index">{String(index + 1).padStart(2, "0")}</span>
-          <strong>{step.title}</strong>
-          <code>{step.node}</code>
-          <p>{step.text}</p>
-        </li>
-      ))}
-    </ol>
+    <header className="section-head">
+      <p className="kicker">{kicker}</p>
+      <h2>{title}</h2>
+      {children && <div className="section-lede">{children}</div>}
+    </header>
   );
 }
 
-function DroneAxes() {
+function LightSwitch({ light, onChange }: { light: Lighting; onChange: (light: Lighting) => void }) {
+  const isOn = light === "on";
   return (
-    <div className="svg-axes">
-      {axes.map((axis) => (
-        <article className="svg-axis-card" key={axis.id}>
-          <div className="embodiment-card-head">
-            <span>{axis.title}</span>
-            <code className="embodiment-actuation">{axis.param}</code>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={isOn}
+      className={`light-switch is-${light}`}
+      onClick={() => onChange(isOn ? "off" : "on")}
+    >
+      <span className="light-switch-label">Lights</span>
+      <span className="light-switch-track" aria-hidden="true">
+        <span className="light-switch-thumb" />
+      </span>
+      <span className="light-switch-state">{isOn ? "On" : "Off"}</span>
+    </button>
+  );
+}
+
+// Two stacked videos of the same flight, one per lighting. Flipping the switch pauses the shown
+// video, seeks the other to the same moment and shows it, playing on if the first was playing.
+function FlightPlayer({ pair, light, title }: { pair: FlightPair; light: Lighting; title: string }) {
+  const { ref, isNear } = useNearViewport<HTMLDivElement>();
+  const onRef = useRef<HTMLVideoElement>(null);
+  const offRef = useRef<HTMLVideoElement>(null);
+  const [shown, setShown] = useState<Lighting>(light);
+  const shownRef = useRef<Lighting>(shown);
+  shownRef.current = shown;
+  const videoFor = (lighting: Lighting) => (lighting === "on" ? onRef.current : offRef.current);
+
+  // A new flight starts from the beginning in whatever lighting is selected.
+  useEffect(() => {
+    setShown(light);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pair.on.video]);
+
+  useEffect(() => {
+    const from = videoFor(shownRef.current);
+    const to = videoFor(light);
+    if (shownRef.current === light) return;
+    if (!from || !to) {
+      setShown(light);
+      return;
+    }
+    const time = from.currentTime;
+    const wasPlaying = !from.paused && !from.ended;
+    from.pause();
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      setShown(light);
+      if (wasPlaying) to.play().catch(() => undefined);
+    };
+    const seek = () => {
+      if (Math.abs(to.currentTime - time) < 0.02) {
+        finish();
+        return;
+      }
+      to.addEventListener("seeked", finish, { once: true });
+      to.currentTime = time;
+    };
+    if (to.readyState >= 1) seek();
+    else to.addEventListener("loadedmetadata", seek, { once: true });
+    const timer = window.setTimeout(finish, 1500);
+    return () => {
+      window.clearTimeout(timer);
+      to.removeEventListener("seeked", finish);
+      to.removeEventListener("loadedmetadata", seek);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [light]);
+
+  return (
+    <div ref={ref} className={`flight-player is-${shown}`}>
+      {isNear ? (
+        (["on", "off"] as const).map((lighting) => {
+          const isShown = lighting === shown;
+          return (
+            <video
+              key={pair[lighting].video}
+              ref={lighting === "on" ? onRef : offRef}
+              className={isShown ? "is-shown" : ""}
+              src={pair[lighting].video}
+              poster={pair[lighting].poster}
+              controls={isShown}
+              muted
+              playsInline
+              preload="metadata"
+              aria-hidden={!isShown}
+              tabIndex={isShown ? undefined : -1}
+              aria-label={`${title}, lights ${lighting}`}
+            />
+          );
+        })
+      ) : (
+        <img className="is-shown" src={pair[light].poster} alt="" />
+      )}
+    </div>
+  );
+}
+
+const flightIds = flights.map((flight) => flight.id);
+const eight = flights.find((flight) => flight.variants.length > 1)!;
+const eightIds = eight.variants.map((variant) => variant.id);
+
+function FlightExplorer() {
+  const [flightId, setFlightId] = useUrlChoice("flight", flightIds, flightIds[0]);
+  const [versionId, setVersionId] = useUrlChoice("version", eightIds, eightIds[0]);
+  const [light, setLight] = useUrlChoice("lights", ["on", "off"] as const, "on");
+  const flightIndex = Math.max(0, flightIds.indexOf(flightId));
+  const flight = flights[flightIndex];
+  const hasVersions = flight.variants.length > 1;
+  const variant = hasVersions ? flight.variants.find((item) => item.id === versionId) ?? flight.variants[0] : flight.variants[0];
+  const variantIndex = flight.variants.indexOf(variant);
+
+  const onTabKey = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    const next = nextIndex(event, flightIndex, flights.length);
+    if (next === null) return;
+    setFlightId(flightIds[next]);
+    window.requestAnimationFrame(() => document.getElementById(`flight-tab-${flightIds[next]}`)?.focus());
+  };
+  const onVersionKey = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    const next = nextIndex(event, variantIndex, flight.variants.length);
+    if (next === null) return;
+    setVersionId(flight.variants[next].id);
+    window.requestAnimationFrame(() => document.getElementById(`version-${flight.variants[next].id}`)?.focus());
+  };
+
+  return (
+    <div className="flight-explorer">
+      <div className="flight-tabs" role="tablist" aria-label="Scenario">
+        {flights.map((candidate, index) => (
+          <button
+            id={`flight-tab-${candidate.id}`}
+            className={candidate.id === flight.id ? "is-active" : ""}
+            type="button"
+            role="tab"
+            aria-selected={candidate.id === flight.id}
+            aria-controls="flight-panel"
+            tabIndex={candidate.id === flight.id ? 0 : -1}
+            onClick={() => setFlightId(candidate.id)}
+            onKeyDown={onTabKey}
+            key={candidate.id}
+          >
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            {candidate.title}
+          </button>
+        ))}
+      </div>
+
+      <div className="flight-panel" id="flight-panel" role="tabpanel" aria-labelledby={`flight-tab-${flight.id}`}>
+        <div className="flight-stage">
+          <div className="flight-toolbar">
+            {hasVersions ? (
+              <div className="version-picker" role="radiogroup" aria-label={`${flight.title} version`}>
+                {flight.variants.map((candidate) => (
+                  <button
+                    id={`version-${candidate.id}`}
+                    type="button"
+                    role="radio"
+                    aria-checked={candidate.id === variant.id}
+                    tabIndex={candidate.id === variant.id ? 0 : -1}
+                    className={candidate.id === variant.id ? "is-active" : ""}
+                    onClick={() => setVersionId(candidate.id)}
+                    onKeyDown={onVersionKey}
+                    key={candidate.id}
+                  >
+                    {candidate.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="flight-toolbar-hint">Same flight, two lighting conditions</p>
+            )}
+            <LightSwitch light={light} onChange={setLight} />
           </div>
-          <dl>
-            {axis.values.map((value) => (
-              <div key={value.name}>
-                <dt>{value.name}</dt>
-                <dd>{value.text}</dd>
+          <FlightPlayer pair={variant.pair} light={light} title={hasVersions ? `${flight.title}, ${variant.label}` : flight.title} />
+          {variant.note && <p className="flight-note">{variant.note}</p>}
+        </div>
+
+        <div className="flight-info">
+          <h3>
+            {flight.title}
+            {hasVersions && <span> · {variant.label}</span>}
+          </h3>
+          <p>{flight.summary}</p>
+          {variant.text && <p className="flight-variant-text">{variant.text}</p>}
+          <h4>What to watch</h4>
+          <ul className="watch-list">
+            {flight.watch.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <h4>Setup</h4>
+          <dl className="setup-list">
+            <div>
+              <dt>Config</dt>
+              <dd>
+                {flight.config.file ? (
+                  <a href={configUrl(flight.config.file)}>
+                    <code>{flight.config.file}</code>
+                  </a>
+                ) : (
+                  <code>{flight.config.launch}</code>
+                )}
+              </dd>
+            </div>
+            {flight.drones.map((drone) => (
+              <div key={drone.who}>
+                <dt>{drone.who}</dt>
+                <dd>{drone.what}</dd>
               </div>
             ))}
           </dl>
-          <p>{axis.note}</p>
-        </article>
-      ))}
-    </div>
-  );
-}
-
-const safetyIds = safetyLayers.map((layer) => layer.id);
-
-function SafetyExplorer() {
-  const [layerId, setLayerId] = useUrlChoice("safety", safetyIds, "cbf");
-  const layerIndex = Math.max(0, safetyIds.indexOf(layerId));
-  const layer = safetyLayers[layerIndex];
-
-  const selectAdjacent = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-    const next = nextTabIndex(event, layerIndex, safetyLayers.length);
-    if (next === null) return;
-    setLayerId(safetyIds[next]);
-    window.requestAnimationFrame(() => document.getElementById(`safety-tab-${safetyIds[next]}`)?.focus());
-  };
-
-  return (
-    <div className="effect-explorer svg-safety">
-      <div className="effect-panel-tabs" role="tablist" aria-label="Safety layer">
-        {safetyLayers.map((candidate) => (
-          <button
-            id={`safety-tab-${candidate.id}`}
-            className={candidate.id === layer.id ? "is-active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={candidate.id === layer.id}
-            aria-controls="safety-panel"
-            tabIndex={candidate.id === layer.id ? 0 : -1}
-            onClick={() => setLayerId(candidate.id)}
-            onKeyDown={selectAdjacent}
-            key={candidate.id}
-          >
-            <span>{candidate.index}</span>
-            <strong>{candidate.label}</strong>
-          </button>
-        ))}
-      </div>
-      <div id="safety-panel" className="effect-workbench" role="tabpanel" aria-labelledby={`safety-tab-${layer.id}`}>
-        <div className={`effect-viewer ${layer.media.src ? "" : "is-text-only"}`}>
-          {layer.media.src && (
-            <div className="effect-stage has-media">
-              <MediaFrame slot={layer.media} describedBy="safety-summary" />
-            </div>
-          )}
-          <div className="effect-evidence">
-            <p className="effect-explanation" id="safety-summary">{layer.summary}</p>
-            <p className="effect-caption">{layer.detail}</p>
-            <table className="svg-param-table">
-              <caption className="sr-only">Parameters for {layer.label}</caption>
-              <tbody>
-                {layer.params.map((param) => (
-                  <tr key={param.name}>
-                    <th scope="row"><code>{param.name}</code></th>
-                    <td><strong>{param.value}</strong><small>{param.text}</small></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <MediaCaption slot={layer.media} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ScenarioCard({ scenario, number }: { scenario: Scenario; number: string }) {
-  const captionId = `scenario-${scenario.id}-caption`;
-  return (
-    <article className={`task-card ${scenario.media.src ? "has-recording" : ""}`}>
-      <MediaFrame slot={scenario.media} describedBy={captionId} />
-      <div className="task-card-copy">
-        <span>{number}</span>
-        <div>
-          <h3><code>{scenario.name}</code></h3>
-          <p id={captionId}>{scenario.description}</p>
-          <MediaCaption slot={scenario.media} />
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function ScenarioCatalog() {
-  const [openId, setOpenId] = useUrlChoice(
-    "scenarios",
-    ["none", ...scenarioGroups.map((group) => group.id)] as const,
-    "station",
-  );
-  let offset = 0;
-
-  return (
-    <div className="task-catalog">
-      {scenarioGroups.map((group) => {
-        const isOpen = openId === group.id;
-        const start = offset;
-        offset += group.scenarios.length;
-        return (
-          <article className={`task-group ${isOpen ? "is-open" : ""}`} key={group.id}>
-            <button
-              className="task-group-trigger"
-              type="button"
-              aria-expanded={isOpen}
-              aria-controls={`scenario-group-${group.id}`}
-              onClick={() => setOpenId(isOpen ? "none" : group.id)}
-            >
-              <span className="task-group-index">{group.index}</span>
-              <span className="task-group-heading">
-                <strong>{group.title}</strong>
-                <small>{group.description}</small>
-              </span>
-              <span className="task-group-meta">
-                <span>{group.scenarios.length} {group.scenarios.length === 1 ? "scenario" : "scenarios"}</span>
-              </span>
-              <span className="task-group-toggle" aria-hidden="true">{isOpen ? "−" : "+"}</span>
-            </button>
-            {isOpen && (
-              <div className="task-group-panel" id={`scenario-group-${group.id}`}>
-                <div className={`task-grid ${group.scenarios.length === 2 ? "task-grid-pair" : ""}`}>
-                  {group.scenarios.map((scenario, index) => (
-                    <ScenarioCard scenario={scenario} number={String(start + index + 1).padStart(2, "0")} key={scenario.id} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </article>
-        );
-      })}
-    </div>
-  );
-}
-
-const experimentIds = experiments.map((experiment) => experiment.id);
-
-function ExperimentExplorer() {
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const [experimentId, setExperimentId] = useUrlChoice("exp", experimentIds, "c4");
-  const experimentIndex = Math.max(0, experimentIds.indexOf(experimentId));
-  const experiment = experiments[experimentIndex];
-
-  useEffect(() => {
-    const tabs = tabsRef.current;
-    const activeTab = document.getElementById(`experiment-tab-${experiment.id}`);
-    if (!tabs || !activeTab) return;
-    tabs.scrollTo({ left: activeTab.offsetLeft - (tabs.clientWidth - activeTab.offsetWidth) / 2, behavior: "auto" });
-  }, [experiment.id]);
-
-  const selectAdjacent = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-    const next = nextTabIndex(event, experimentIndex, experiments.length);
-    if (next === null) return;
-    setExperimentId(experimentIds[next]);
-    window.requestAnimationFrame(() => document.getElementById(`experiment-tab-${experimentIds[next]}`)?.focus());
-  };
-
-  return (
-    <div className="results-explorer">
-      <div ref={tabsRef} className="experiment-tabs svg-experiment-tabs" role="tablist" aria-label="Experiment">
-        {experiments.map((candidate) => (
-          <button
-            id={`experiment-tab-${candidate.id}`}
-            className={candidate.id === experiment.id ? "is-active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={candidate.id === experiment.id}
-            aria-controls="experiment-panel"
-            tabIndex={candidate.id === experiment.id ? 0 : -1}
-            onClick={() => setExperimentId(candidate.id)}
-            onKeyDown={selectAdjacent}
-            key={candidate.id}
-          >
-            <span>{candidate.code}</span>
-            <strong>{candidate.label}</strong>
-            <small>{candidate.scope}</small>
-          </button>
-        ))}
-      </div>
-      <div className="experiment-panel" id="experiment-panel" role="tabpanel" aria-labelledby={`experiment-tab-${experiment.id}`}>
-        <div className={`experiment-three-layout comparison-layout ${experiment.media.src ? "has-recording" : "is-text-only"}`}>
-          <div className="embodiment-comparison-panel">
-            <p className="study-insight">{experiment.summary}</p>
-            <p className="evaluation-context">Config: <code>{experiment.config}</code></p>
-            <div className="metric-table-scroll">
-              <table className="embodiment-metric-table svg-drone-table">
-                <caption className="sr-only">Drones in {experiment.label}</caption>
-                <thead>
-                  <tr className="embodiment-metric-header">
-                    <th scope="col">Drone</th>
-                    <th scope="col">Mode</th>
-                    <th scope="col">Role</th>
-                    <th scope="col">CBF</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {experiment.drones.map((drone) => (
-                    <tr className="embodiment-metric-row" key={drone.name}>
-                      <th scope="row"><code>{drone.name}</code></th>
-                      <td>{drone.mode}</td>
-                      <td>{drone.role}</td>
-                      <td className={drone.cbf === "exempt" ? "is-exempt" : ""}>{drone.cbf}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <h3 className="svg-subhead">What to watch</h3>
-            <ul className="svg-list">
-              {experiment.watch.map((item) => <li key={item}>{item}</li>)}
-            </ul>
-            <p className="svg-led"><span aria-hidden="true" /> {experiment.leds}</p>
-            <MediaCaption slot={experiment.media} />
-          </div>
-          {experiment.media.src && (
-            <div className="embodiment-video-panel">
-              <div className="experiment-video">
-                <MediaFrame slot={experiment.media} describedBy="experiment-caption" />
-                <p id="experiment-caption"><strong>{experiment.code} · {experiment.label}</strong></p>
-              </div>
-            </div>
+          {flight.alsoRuns && (
+            <p className="also-runs">
+              Same scenario, other setups:{" "}
+              {flight.alsoRuns.map((other, index) => (
+                <span key={other.file}>
+                  {index > 0 && "; "}
+                  <a href={configUrl(other.file)}>
+                    <code>{other.file}</code>
+                  </a>{" "}
+                  ({other.text})
+                </span>
+              ))}
+              .
+            </p>
           )}
         </div>
       </div>
@@ -513,9 +357,7 @@ function Header() {
       .filter((element): element is HTMLElement => element !== null);
     const observer = new IntersectionObserver(
       (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
         if (visible) setActiveSection(visible.target.id);
       },
       { rootMargin: "-20% 0px -68%", threshold: [0, 0.1, 0.4] },
@@ -526,10 +368,12 @@ function Header() {
 
   return (
     <header className="site-header">
-      <a className="skip-link" href="#main-content">Skip to content</a>
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <div className="nav-shell">
         <a className="wordmark" href="#top" onClick={() => setMenuOpen(false)}>
-          <img className="wordmark-mark" src={withBase("/static/images/svg-logo.svg")} alt="" width="34" height="34" />
+          <img src={withBase("/static/images/svg-logo.svg")} alt="" width="32" height="32" />
           <span>Strike vs Guard</span>
         </a>
         <button
@@ -546,16 +390,13 @@ function Header() {
         </button>
         <nav id="primary-navigation" className={menuOpen ? "is-open" : ""} aria-label="Primary navigation">
           {navItems.map((item) => (
-            <a
-              className={activeSection === item.id ? "is-active" : ""}
-              href={`#${item.id}`}
-              onClick={() => setMenuOpen(false)}
-              key={item.id}
-            >
+            <a className={activeSection === item.id ? "is-active" : ""} href={`#${item.id}`} onClick={() => setMenuOpen(false)} key={item.id}>
               {item.label}
             </a>
           ))}
-          <a className="nav-docs" href={withBase("/docs/")}>Docs ↗</a>
+          <a className="nav-docs" href={withBase("/docs/")}>
+            Docs ↗
+          </a>
         </nav>
       </div>
     </header>
@@ -570,251 +411,247 @@ function App() {
       <Header />
       <main id="main-content">
         <section className="hero" id="top">
-          <div className="page-shell hero-layout">
-            <div className="hero-kicker"><span>Homogeneous multi-agent safe and agile control · AirLab · AirStack</span></div>
-            <h1>
-              <span className="hero-title-prefix">Strike vs Guard (SVG):</span>
-              Collision-safe ground control for
-              <span className="hero-topic"> multi-drone</span> strike and guard flights
-            </h1>
-            <p className="hero-contribution">
-              One ground commander flies every drone, real or simulated, through a shared control barrier function. The guards hold their posts, make room for an intruder passing between them, and return.
-            </p>
-            {authors.length > 0 && (
-              <div className="author-list" aria-label="Authors">
-                {authors.map((author) => author.href ? (
-                  <a href={author.href} target="_blank" rel="noreferrer" key={author.name}>
-                    {author.name}<sup>{author.affiliation}</sup>
-                  </a>
-                ) : (
-                  <span key={author.name}>{author.name}<sup>{author.affiliation}</sup></span>
-                ))}
-              </div>
-            )}
-            <div className="affiliation-list">
-              {affiliations.map((affiliation, index) => (
-                <span key={affiliation}>{authors.length > 0 && <sup>{index + 1}</sup>} {affiliation}</span>
-              ))}
-            </div>
-            <div className="resource-row">
-              {releaseResources.map((resource) => resource.href ? (
-                <a className="button button-primary" href={resource.href} key={resource.id}>
-                  {resource.label} <span>↗</span>
+          <div className="page-shell hero-grid">
+            <div className="hero-copy">
+              <p className="kicker">
+                <span className="hero-badge">SVG</span> {affiliation}
+              </p>
+              <h1>Strike vs Guard</h1>
+              <p className="hero-lede">
+                Two identical drone teams, one protected target. The SVG ground controller is the part that actually flies
+                them: it turns each team's plan into safe flight, for real drones, simulated drones, or both at once.
+              </p>
+              <div className="button-row">
+                <a className="button button-primary" href="#flights">
+                  Watch the flights
                 </a>
-              ) : (
-                <span className="button button-pending" aria-disabled="true" key={resource.id}>
-                  {resource.label} <small>{resource.status.replace("-", " ")}</small>
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {media.overview.src && (
-          <section className="overview-video" id="overview" aria-labelledby="overview-heading">
-            <div className="page-shell">
-              <div className="overview-content">
-                <h2 id="overview-heading">Overview video</h2>
-                <video
-                  className="overview-player"
-                  controls
-                  playsInline
-                  preload="none"
-                  poster={media.overview.src.replace(/\.mp4$/, ".jpg")}
-                  width="1920"
-                  height="1080"
-                  aria-label={media.overview.label}
-                >
-                  <source src={media.overview.src} type="video/mp4" />
-                  <a href={media.overview.src}>Watch the overview video</a>.
-                </video>
+                {releaseResources.map((resource) =>
+                  resource.href ? (
+                    <a className="button" href={resource.href} key={resource.id}>
+                      {resource.label} <span aria-hidden="true">↗</span>
+                    </a>
+                  ) : (
+                    <span className="button is-pending" aria-disabled="true" key={resource.id}>
+                      {resource.label} <small>coming soon</small>
+                    </span>
+                  ),
+                )}
               </div>
             </div>
-          </section>
-        )}
-
-        <section className="architecture-section section-block" id="system">
-          <div className="page-shell">
-            <h2>One commander, every drone, one safety filter.</h2>
-            <p className="architecture-intro">
-              Each drone runs its own flight controller, but nothing onboard knows where the other drones are. SVG keeps that knowledge on the ground. A central <code>swarm_commander</code> reads every drone's odometry in one world frame. It builds each drone's nominal command from a scenario, a goal or a gamepad, filters all of them together through a velocity CBF, and sends each drone a PX4-style trajectory point. Sim and hardware differ only in which topics a drone's commands go to. That's why a real drone in the mocap room and a simulated one in Isaac Sim can dodge each other under the same filter.
-            </p>
-            <p className="architecture-summary">
-              SVG is one ROS 2 package inside <a href="https://github.com/castacks/AirStack">AirStack</a>, AirLab's containerised autonomy stack. It sits on top of AirStack's interface layer rather than replacing it. Each drone's <code>robot_interface_node</code> talks to PX4, through MAVROS for a simulated drone or over uXRCE-DDS with <code>px4_interface</code> for a real one, and <code>odometry_conversion</code> turns either into the same ENU odometry topic and TF. In simulation, AirStack's Isaac Sim container runs the physics and one PX4 SITL per drone; on hardware, its <code>natnet_ros2</code> node brings in the OptiTrack poses. SVG reads those odometry topics, writes each drone's command, and launches with <code>AUTOLAUNCH=false</code> so AirStack's stock planners stay out of the loop.
-            </p>
-            <SystemPipeline />
-            <div className="svg-stats">
-              {stats.map((stat) => (
-                <div key={stat.label}>
-                  <strong>{stat.value}</strong>
-                  <span>{stat.label}</span>
-                </div>
-              ))}
-            </div>
-            <figure className="architecture-figure">
-              <MediaFrame slot={media.architecture} />
-              <figcaption>
-                {media.architecture.caption && <>{media.architecture.caption}<br /></>}
-                System architecture · <a href={`${repoBase}/${packagePath}/README.md`}>svg_ground_control README ↗</a>
-              </figcaption>
+            <figure className="hero-figure">
+              <img src={media.heroAnimation} alt="Animation: two identical drone teams and a protected target; the game's rules; the four layers of the system; and the path from simulation to flight tests." width="640" height="360" />
+              <figcaption>The game and the system, in 12 seconds.</figcaption>
             </figure>
           </div>
+          <div className="page-shell">
+            <dl className="stat-row">
+              {stats.map((stat) => (
+                <div key={stat.label}>
+                  <dt>{stat.value}</dt>
+                  <dd>{stat.label}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </section>
 
-        <section className="embodiment-section section-block" id="drones">
+        <section className="section" id="game">
           <div className="page-shell">
-            <SectionIntro title="Any drone, any mode">
-              <p>Every task is a config. Each drone in it is set on three independent axes, so pure sim, all real and hybrid are the same task with different settings.</p>
-            </SectionIntro>
-            <DroneAxes />
-            {modeGallery.length > 0 && (
-              <div className="svg-mode-gallery">
-                {modeGallery.map((slot) => (
-                  <figure key={slot.suggested}>
-                    <MediaFrame slot={slot} />
-                    <figcaption>{slot.label}</figcaption>
-                  </figure>
+            <SectionHead kicker="01 · The game" title="A benchmark for teams of drones">
+              <p>
+                Strike vs Guard is a game we use to test how drone teams coordinate, adapt and stay safe when every drone is
+                fast and close to the others.
+              </p>
+            </SectionHead>
+            <div className="rule-grid">
+              {rules.map((rule, index) => (
+                <article className={`rule-card is-${rule.id}`} key={rule.id}>
+                  <span className="rule-index">{String(index + 1).padStart(2, "0")}</span>
+                  <h3>{rule.title}</h3>
+                  <p>{rule.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section section-tint" id="controller">
+          <div className="page-shell">
+            <SectionHead kicker="02 · The ground controller" title="Strategy decides who goes where. SVG makes it fly, safely.">
+              <p>
+                The system has four layers. Decisions flow down and the drones' positions flow back up. The SVG ground
+                controller is the bottom two: it runs on one computer on the ground and flies every drone in the room.
+              </p>
+            </SectionHead>
+            <div className="controller-grid">
+              <ol className="layer-stack" aria-label="System layers, top to bottom">
+                {layers.map((layer) => (
+                  <li className={`layer is-${layer.id}`} key={layer.id}>
+                    <strong>{layer.title}</strong>
+                    <span>{layer.text}</span>
+                    <small>{layer.owner}</small>
+                  </li>
                 ))}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="effects-section section-block" id="safety">
-          <div className="page-shell">
-            <SectionIntro title="Layers of safety">
-              <p>The CBF keeps drones apart, the fences keep them in the room, and hold, land and stale-input handling cover the rest. None of these cut the motors. The pilot's RC emergency stop stays the true cutoff.</p>
-            </SectionIntro>
-            <SafetyExplorer />
-          </div>
-        </section>
-
-        <section className="tasks-section section-block" id="scenarios">
-          <div className="page-shell">
-            <SectionIntro title="Flight scenarios">
-              <p>The scenarios flown so far in the mocap room, each with its recording. A scenario is a nominal-velocity policy picked with <code>scenario:=</code> at launch, and every one runs under the same filter.</p>
-            </SectionIntro>
-            <ScenarioCatalog />
-          </div>
-        </section>
-
-        <section className="results-section section-block" id="experiments">
-          <div className="page-shell">
-            <SectionIntro title="Experiments">
-              <p>Five tasks build up to the squeeze: one drone to a goal, then several, then the squeeze in simulation, with a simulated intruder, and with a pilot.</p>
-            </SectionIntro>
-            <ExperimentExplorer />
-          </div>
-        </section>
-
-        <section className="policy-section section-block" id="ground-station">
-          <div className="page-shell">
-            <SectionIntro title="Ground station">
-              <p>The SVG Basestation is a Foxglove panel built for the operator. It sits beside a 3D view of every drone, its safety sphere, the fences and the goals.</p>
-            </SectionIntro>
-            <div className="svg-basestation">
-              <figure className="architecture-figure">
-                <MediaFrame slot={media.basestation} />
-                <figcaption>
-                  {media.basestation.caption && <>{media.basestation.caption}<br /></>}
-                  SVG Basestation · <a href={`${repoBase}/${packagePath}/foxglove/svg-basestation/README.md`}>panel README ↗</a>
-                  {media.basestation.src && <> · <a href={media.basestation.src} target="_blank" rel="noreferrer">Full recording ↗</a></>}
-                </figcaption>
-              </figure>
-              <div className="svg-feature-grid">
-                {basestationFeatures.map((feature) => (
-                  <article key={feature.title}>
-                    <h3>{feature.title}</h3>
-                    <p>{feature.text}</p>
+              </ol>
+              <div className="capability-grid">
+                {capabilities.map((capability) => (
+                  <article key={capability.id}>
+                    <h3>{capability.title}</h3>
+                    <p>{capability.text}</p>
                   </article>
                 ))}
               </div>
             </div>
-          </div>
-        </section>
 
-        <section className="findings-section section-block" id="findings">
-          <div className="page-shell">
-            <SectionIntro title="What the flights taught us">
-              <p>Every change to the control law started from a bag recorded in the mocap room. Fixes were checked against a plant model identified from drone_2's ULogs: 0.15 s link delay, velocity loop P 1.8 / I 0.4, 0.1 s attitude lag.</p>
-            </SectionIntro>
-            <div className="metric-table-scroll">
-              <table className="embodiment-metric-table svg-findings-table">
-                <caption className="sr-only">Problems found in flight and their fixes</caption>
-                <thead>
-                  <tr className="embodiment-metric-header">
-                    <th scope="col">Problem</th>
-                    <th scope="col">Bag</th>
-                    <th scope="col">Before</th>
-                    <th scope="col">After</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {findings.map((finding) => (
-                    <tr className="embodiment-metric-row" key={finding.issue}>
-                      <th scope="row">{finding.issue}</th>
-                      <td><code>{finding.evidence}</code></td>
-                      <td>{finding.before}</td>
-                      <td className="is-best">
-                        {finding.after}
-                        <small className={`svg-basis is-${finding.basis}`}>
-                          {finding.basis === "model" ? "plant model" : finding.basis === "flight" ? "measured" : "fixed in code"}
-                        </small>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {findingPlots.length > 0 && (
-              <div className="svg-plot-row">
-                {findingPlots.map((slot) => (
-                  <figure key={slot.suggested}>
-                    <MediaFrame slot={slot} />
-                    <figcaption>{slot.label}</figcaption>
-                  </figure>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+            <ol className="phase-track" aria-label="From simulation to flight tests">
+              {phases.map((phase, index) => (
+                <li key={phase.id}>
+                  <span>Phase {index + 1}</span>
+                  <strong>{phase.title}</strong>
+                  <p>{phase.text}</p>
+                </li>
+              ))}
+            </ol>
 
-        <section className="abstract-section section-block" id="summary">
-          <div className="page-shell abstract-layout">
-            <div className="abstract-heading">
-              <h2>Summary</h2>
-            </div>
-            <div className="abstract-copy">
-              <p>
-                Drones are everywhere now, and sometimes one is somewhere it shouldn't be: near an airport, over a crowd, inside a no-fly zone. Strike vs Guard asks how a team of guard drones can keep a protected area covered and turn an approaching drone away, without any two drones ever coming too close. It is the execution layer of a multi-institute programme on homogeneous multi-agent safe and agile control, built at AirLab on AirStack.
-              </p>
-              <p>
-                In the flights shown here, guard drones hold a formation while an intruder, flown by a policy, by a simulated vehicle or by a person with a gamepad, passes through them. Safety is enforced centrally. A velocity control barrier function, ported from the MuJoCo-validated drone_soccer project, sees every drone and minimally corrects their commands so no pair comes within twice the safety radius.
-              </p>
-              <p>
-                The same commander drives simulated drones in Isaac Sim through MAVROS and real drones in an OptiTrack room through px4_interface over uXRCE-DDS, and it can mix them in one run. Real drones get a reference point with velocity and acceleration feedforward, so PX4 closes the position loop onboard. Goals, takeoff, hold and the geofence all use PX4's own braking law, and each piece was tuned against bags recorded in flight.
-              </p>
-              <p>
-                Next is a larger flight: about six guard drones and three intruders, where the guards use the intruders' own collision avoidance to steer them away from a protected zone, either by herding them or by holding a blocking formation along its boundary. Strategy and coordination policies from partner groups will arrive over the same ROS 2 interfaces, and the ground controller will turn them into safe commands for each drone. The same cooperative control carries over to search and rescue, environmental monitoring and inspection.
-              </p>
-            </div>
-          </div>
-          <div className="page-shell limitations">
-            <h3>Known limitations</h3>
-            <ul>
-              {limitations.map((item) => <li key={item}>{item}</li>)}
+            <h3 className="subhead">Safety, layer by layer</h3>
+            <ul className="safety-grid">
+              {safetyLayers.map((layer) => (
+                <li key={layer.title}>
+                  <strong>{layer.title}</strong>
+                  <span>{layer.text}</span>
+                </li>
+              ))}
             </ul>
+
+            <details className="diagram">
+              <summary>Show the system diagram</summary>
+              <figure>
+                <a href={media.architecture} target="_blank" rel="noreferrer">
+                  <img src={media.architecture} alt="System diagram of the SVG ground controller" loading="lazy" width="1882" height="996" />
+                </a>
+                <figcaption>
+                  Each drone's command comes from the scenario or a gamepad, passes the safety filter, and goes to a real or a
+                  simulated drone. More in the <a href={withBase("/docs/")}>documentation</a>.
+                </figcaption>
+              </figure>
+            </details>
           </div>
         </section>
 
-        <section className="citation-section section-block" id="citation">
-          <div className="page-shell citation-layout">
+        <section className="section" id="flights">
+          <div className="page-shell">
+            <div className="flights-intro">
+              <SectionHead kicker="03 · Flights" title="Five scenarios, with the lights on and off">
+                <p>
+                  Every flight here was flown with three real drones in CMU's motion-capture room, once with the lights on and
+                  once in the dark. Flip the light switch to compare: the two recordings are lined up on the moment the mission
+                  starts, and the video keeps its place.
+                </p>
+                <p>
+                  In the dark you only see the LEDs. A drone glows green while it flies its own path and red while the safety
+                  filter is steering it.
+                </p>
+              </SectionHead>
+              <figure className="flights-photo">
+                <img src={media.starlings} alt="Three Starling drones with green LED strips on the flight-room floor" loading="lazy" width="2000" height="1125" />
+                <figcaption>The three Starling drones, lights on, before a run.</figcaption>
+              </figure>
+            </div>
+            <FlightExplorer />
+            <div className="legend">
+              <p className="legend-title">Reading the videos</p>
+              <ul>
+                {overlayLegend.map((item) => (
+                  <li className={`is-${item.id}`} key={item.id}>
+                    <strong>{item.label}</strong> {item.text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="section section-tint" id="ground-station">
+          <div className="page-shell">
+            <SectionHead kicker="04 · Ground station" title="One screen for the operator">
+              <p>
+                The SVG Basestation runs in Foxglove beside a live 3D view of every drone. It is built for the person
+                responsible for the flight: deliberate controls and a clear answer to "did that command actually happen?"
+              </p>
+            </SectionHead>
+            <figure className="wide-figure">
+              <a href={media.basestation} target="_blank" rel="noreferrer">
+                <img src={media.basestation} alt="The SVG Basestation panel next to a 3D view of three drones and their battery status" loading="lazy" width="1600" height="817" />
+              </a>
+              <figcaption>The Basestation during the goal-tracking flight.</figcaption>
+            </figure>
+            <div className="feature-grid">
+              {basestationFeatures.map((feature) => (
+                <article key={feature.title}>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section" id="lessons">
+          <div className="page-shell">
+            <SectionHead kicker="05 · Lessons from flight" title="Every fix started from a recorded flight">
+              <p>
+                We recorded each flight, found what went wrong, and checked each fix against a model of the drone built from
+                its own flight logs.
+              </p>
+            </SectionHead>
+            <div className="lesson-grid">
+              {lessons.map((lesson) => (
+                <article key={lesson.title}>
+                  <h3>{lesson.title}</h3>
+                  <p className="lesson-before">
+                    <span>Before</span>
+                    <s>{lesson.before}</s>
+                  </p>
+                  <p className="lesson-after">
+                    <span>After</span>
+                    {lesson.after}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section section-dark" id="next">
+          <div className="page-shell next-grid">
+            <SectionHead kicker="06 · What's next" title="Bigger games" />
+            <div className="next-copy">
+              <p>
+                Next is a larger game: about six guards against three strikers. The guards will use the strikers' own
+                collision avoidance to steer them off course, either by herding them or by holding a line in front of the
+                target.
+              </p>
+              <p>
+                Strategies from partner teams will plug in through the same interfaces, and the ground controller will keep
+                turning them into safe flight for every drone. The same cooperative control carries over to search and rescue,
+                environmental monitoring and inspection.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="section" id="citation">
+          <div className="page-shell citation-grid">
             <div>
               <h2>Citation</h2>
               <p>A citation will be added here once the paper is available.</p>
-              <p><a href={`${repoBase}/${packagePath}`}>Browse the source on GitHub ↗</a></p>
+              <p>
+                <a href={`${repoBase}/${packagePath}`}>Browse the source on GitHub ↗</a>
+              </p>
             </div>
-            <pre><code>{"@misc{svg2026,\n  title  = {Strike vs Guard},\n  note   = {Citation coming soon}\n}"}</code></pre>
+            <pre>
+              <code>{"@misc{svg2026,\n  title  = {Strike vs Guard},\n  note   = {Citation coming soon}\n}"}</code>
+            </pre>
           </div>
         </section>
       </main>
@@ -822,11 +659,13 @@ function App() {
       <footer className="site-footer">
         <div className="page-shell footer-grid">
           <div className="footer-brand">
-            <img className="wordmark-mark" src={withBase("/static/images/svg-logo.svg")} alt="" width="34" height="34" />
-            <div><strong>Strike vs Guard</strong><p>Collision-safe multi-drone ground control on AirStack.</p></div>
+            <img src={withBase("/static/images/svg-logo.svg")} alt="" width="32" height="32" />
+            <div>
+              <strong>Strike vs Guard</strong>
+              <p>Safe multi-drone ground control on AirStack.</p>
+            </div>
           </div>
-          <div className="footer-contact">
-            <p className="mini-label">Explore and reproduce</p>
+          <div className="footer-links">
             <a href={`${repoBase}/${packagePath}`}>svg_ground_control on GitHub ↗</a>
             <a href={withBase("/docs/")}>Documentation ↗</a>
           </div>

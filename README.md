@@ -28,27 +28,28 @@ npm run preview        # http://localhost:4173/svg-website/ and http://localhost
 
 The dev server serves only the homepage, so use the full preview to check the docs and the links between the two.
 
-## Add photos, videos and figures
+## Add or replace flight videos
 
-A media slot with no file is left out of the page and its text stands alone; add the file and set `src` to show it.
+Each scenario on the homepage plays one flight recorded twice, with the room lights on and off. The light switch
+swaps between the two at the same moment, so both files of a pair must have the same length and be lined up on the
+mission start.
 
-1. Put the file in `public/static/media/videos/`, `photos/` or `figures/`. For a video, add a poster `.jpg`
-   with the same name next to it.
-2. In `src/data/media.ts`, set that slot's `src`, for example `"/static/media/videos/c4-hybrid-squeeze.mp4"`.
-   Each slot's `suggested` field gives the file name it expects. For a flight recording, use `recording()`:
-   it takes the file name, a caption shown under the clip, and a framing. The recordings are three panes
-   side by side (panel, 3D view, camera); `"camera"` (the default) crops a card to the camera pane and
-   `"full"` shows all three.
+1. Put the pair in `public/static/media/videos/` as `<name>-on.mp4` and `<name>-off.mp4` (1080p H.264, no audio,
+   `-movflags +faststart`), each with a poster `<name>-on.jpg` / `<name>-off.jpg` beside it.
+2. In `src/data/project.ts`, point the scenario's variant at it with `flightPair("<name>")`. A scenario with more than
+   one variant (like Figure eight) gets a version picker above the player.
 
-The raw clips and photos can be kept in `media/` (ignored by git). Copy a clip in with
-`ffmpeg -i media/<clip>.mp4 -c:v copy -an -movflags +faststart public/static/media/videos/<name>.mp4`.
+Other images live in `public/static/media/figures/` and `photos/` and are listed in `src/data/media.ts`.
+The hero animation is `figures/strike-vs-guard.gif`.
 
 ## Edit the content
 
-- `src/data/project.ts`: the text, numbers, scenarios, experiments and findings shown on the homepage.
-  `authors` is empty and the author row is hidden until you fill it in.
-- `src/data/media.ts`: media slots and the hero buttons. Paper and Video show "coming soon" until they get an `href`.
-- `src/App.tsx`: page structure. `src/styles.css`: the template's styles, with the SVG components at the end.
+- `src/data/project.ts`: all the text on the homepage: the game's rules, the system layers, the scenarios with their
+  configs, the ground-station features and the lessons from flight. The page stays high level; technical detail
+  belongs in `docs/`.
+- `src/data/media.ts`: image paths, flight video pairs and the hero buttons. A button without an `href` shows
+  "coming soon".
+- `src/App.tsx`: page structure. `src/styles.css`: all homepage styles.
 
 ## Docs
 

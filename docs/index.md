@@ -1,6 +1,6 @@
 # Strike vs Guard
 
-Strike vs Guard (SVG) is a multi-drone ground controller for counter-UAS flights. It runs on [AirStack](https://github.com/castacks/AirStack). One `swarm_commander` flies every drone, real or simulated, through a shared CBF collision filter. Guard drones hold their posts and yield to an intruder that forces its way through the gap. The [project homepage](https://strike-vs-guard.github.io/svg-website/) has the overview, media and flight findings.
+Strike vs Guard (SVG) is the multi-drone ground controller behind the Strike vs Guard game: two identical drone teams, strikers and guards, around one protected target. It runs on [AirStack](https://github.com/castacks/AirStack). One `swarm_commander` flies every drone, real or simulated, through a shared CBF collision filter. In the squeeze test, guard drones hold their posts and make room for a striker flown through the gap. The [project homepage](https://strike-vs-guard.github.io/svg-website/) has the overview and the flight videos.
 
 This documentation covers the `svg_ground_control` package and the ground-station tools around it, on the [`yikuan/SVG_ground_control`](https://github.com/castacks/AirStack/tree/yikuan/SVG_ground_control/robot/ros_ws/src/svg_ground_control) branch of AirStack. Every command block assumes a fresh terminal.
 
