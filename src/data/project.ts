@@ -9,6 +9,15 @@ export const configUrl = (file: string) => `${repoBase}/${packagePath}/config/${
 
 export const affiliation = "AirLab, Robotics Institute, Carnegie Mellon University";
 
+// Shown under the title, in this order. A name with an href links to that person's AirLab page.
+export const authors: { name: string; href?: string }[] = [
+  { name: "Yikuan Fang", href: "https://theairlab.org/team/yikuan_fang/" },
+  { name: "Younkyung (Cindy) Woo", href: "https://theairlab.org/team/younkyung/" },
+  { name: "Henry Tung" },
+  { name: "Neelay Joglekar", href: "https://theairlab.org/team/neelay_joglekar/" },
+  { name: "Sebastian Scherer", href: "https://theairlab.org/team/sebastian/" },
+];
+
 export const stats = [
   { value: "20×/s", label: "every drone's command checked by the safety filter" },
   { value: "5", label: "scenarios flown on real drones" },

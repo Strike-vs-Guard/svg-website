@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, 
 import { media, releaseResources, withBase, type FlightPair, type Lighting } from "./data/media";
 import {
   affiliation,
+  authors,
   basestationFeatures,
   capabilities,
   configUrl,
@@ -417,6 +418,11 @@ function App() {
                 <span className="hero-badge">SVG</span> {affiliation}
               </p>
               <h1>Strike vs Guard</h1>
+              <ul className="author-list" aria-label="Authors">
+                {authors.map((author) => (
+                  <li key={author.name}>{author.href ? <a href={author.href}>{author.name}</a> : author.name}</li>
+                ))}
+              </ul>
               <p className="hero-lede">
                 Two identical drone teams, one protected target. The SVG ground controller is the part that actually flies
                 them: it turns each team's plan into safe flight, for real drones, simulated drones, or both at once.
@@ -650,7 +656,7 @@ function App() {
               </p>
             </div>
             <pre>
-              <code>{"@misc{svg2026,\n  title  = {Strike vs Guard},\n  note   = {Citation coming soon}\n}"}</code>
+              <code>{"@misc{svg2026,\n  title  = {Strike vs Guard},\n  author = {Fang, Yikuan and Woo, Younkyung and Tung, Henry and\n            Joglekar, Neelay and Scherer, Sebastian},\n  note   = {Citation coming soon}\n}"}</code>
             </pre>
           </div>
         </section>
