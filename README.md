@@ -45,7 +45,7 @@ The hero animation is `figures/strike-vs-guard.gif`.
 ## Edit the content
 
 - `src/data/project.ts`: all the text on the homepage: the authors (with links to their AirLab pages), the game's rules, the system layers, the scenarios with their
-  configs, the ground-station features and the lessons from flight. The page stays high level; technical detail
+  configs, the ground-station features and the news slides. The page stays high level; technical detail
   belongs in `docs/`.
 - `src/data/media.ts`: image paths, flight video pairs and the hero buttons. A button without an `href` shows
   "coming soon".

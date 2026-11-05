@@ -225,15 +225,24 @@ code { font-family: var(--font-mono); font-size: 0.9em; }
 .wide-figure figcaption { margin-top: 10px; color: var(--muted); font-size: 0.86rem; }
 .feature-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 28px; }
 
-/* Lessons */
-.lesson-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-.lesson-grid article { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-.lesson-grid h3 { min-height: 2.6em; font-size: 1.02rem; line-height: 1.3; }
-.lesson-grid p { display: grid; gap: 2px; margin-top: 14px; }
-.lesson-grid p span { color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; }
-.lesson-before { color: var(--muted); }
-.lesson-before s { text-decoration-color: rgba(196, 18, 48, 0.6); }
-.lesson-after { color: var(--green); font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+/* News */
+.news-panel { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); overflow: hidden; border: 1px solid var(--line); border-radius: calc(var(--radius) + 4px); background: var(--surface); }
+.news-stage { padding: 20px; border-right: 1px solid var(--line); }
+.news-frame { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px; background: var(--tint); }
+.news-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 240ms ease; }
+.news-frame img.is-shown { opacity: 1; }
+.news-arrow { position: absolute; top: 50%; width: 44px; height: 44px; display: grid; place-items: center; transform: translateY(-50%); border: 0; border-radius: 50%; background: rgba(21, 24, 22, 0.62); color: #fff; font-size: 1.6rem; line-height: 1; transition: background 140ms ease; }
+.news-arrow:hover { background: rgba(21, 24, 22, 0.85); }
+.news-arrow span { transform: translateY(-2px); }
+.news-arrow.is-prev { left: 12px; }
+.news-arrow.is-next { right: 12px; }
+.news-dots { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+.news-dots button { width: 10px; height: 10px; padding: 0; border: 0; border-radius: 999px; background: #c3c6bf; transition: width 160ms ease, background 160ms ease; }
+.news-dots button.is-active { width: 28px; background: var(--red); }
+.news-info { display: flex; flex-direction: column; justify-content: center; padding: 32px 30px; }
+.news-count { color: var(--muted); font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.08em; }
+.news-info h3 { margin: 8px 0 14px; font-size: clamp(1.6rem, 2.6vw, 2.1rem); letter-spacing: -0.03em; }
+.news-info p:last-child { color: var(--ink-soft); font-size: 1.12rem; }
 
 /* What's next */
 .section-dark { background: var(--ink); color: #f4f4ef; }
@@ -263,7 +272,9 @@ code { font-family: var(--font-mono); font-size: 0.9em; }
   .flights-photo { max-width: 520px; }
   .flight-panel { grid-template-columns: 1fr; }
   .flight-stage { border-right: 0; border-bottom: 1px solid var(--line); }
-  .feature-grid, .lesson-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .news-panel { grid-template-columns: 1fr; }
+  .news-stage { border-right: 0; border-bottom: 1px solid var(--line); }
   .safety-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .safety-grid li:not(:nth-child(3n + 1)) { padding-left: 0; border-left: 0; }
   .safety-grid li:nth-child(2n) { padding-left: 20px; border-left: 1px solid #c9cbc3; }
@@ -285,7 +296,10 @@ code { font-family: var(--font-mono); font-size: 0.9em; }
   .section { padding: 72px 0; }
   .hero { padding-top: 48px; }
   .section-head { margin-bottom: 32px; }
-  .capability-grid, .feature-grid, .lesson-grid, .safety-grid, .phase-track { grid-template-columns: 1fr; }
+  .capability-grid, .feature-grid, .safety-grid, .phase-track { grid-template-columns: 1fr; }
+  .news-stage { padding: 12px; }
+  .news-info { padding: 22px 16px 24px; }
+  .news-arrow { width: 38px; height: 38px; }
   .safety-grid li:nth-child(2n) { padding-left: 0; border-left: 0; }
   .phase-track { gap: 18px; padding-top: 0; padding-left: 28px; }
   .phase-track::before { top: 6px; bottom: 6px; left: 7px; right: auto; width: 2px; height: auto; }

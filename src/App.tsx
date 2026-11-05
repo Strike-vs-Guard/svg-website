@@ -8,7 +8,7 @@ import {
   configUrl,
   flights,
   layers,
-  lessons,
+  news,
   overlayLegend,
   packagePath,
   phases,
@@ -24,7 +24,7 @@ const navItems = [
   { id: "controller", label: "Controller" },
   { id: "flights", label: "Flights" },
   { id: "ground-station", label: "Ground station" },
-  { id: "lessons", label: "Lessons" },
+  { id: "news", label: "News" },
 ] as const;
 
 function useInitialHashTarget() {
@@ -336,6 +336,57 @@ function FlightExplorer() {
   );
 }
 
+// A small slideshow: the photo on the left, its title and text on the right.
+function NewsSlides() {
+  const [index, setIndex] = useState(0);
+  const item = news[index];
+  const go = (step: number) => setIndex((current) => (current + step + news.length) % news.length);
+
+  return (
+    <div className="news-panel" role="region" aria-roledescription="carousel" aria-label="News">
+      <div className="news-stage">
+        <div className="news-frame">
+          {news.map((candidate, candidateIndex) => (
+            <img
+              key={candidate.image}
+              src={candidate.image}
+              alt={candidate.alt}
+              loading="lazy"
+              className={candidateIndex === index ? "is-shown" : ""}
+              aria-hidden={candidateIndex !== index}
+            />
+          ))}
+          <button className="news-arrow is-prev" type="button" aria-label="Previous news item" onClick={() => go(-1)}>
+            <span aria-hidden="true">‹</span>
+          </button>
+          <button className="news-arrow is-next" type="button" aria-label="Next news item" onClick={() => go(1)}>
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
+        <div className="news-dots">
+          {news.map((candidate, candidateIndex) => (
+            <button
+              type="button"
+              className={candidateIndex === index ? "is-active" : ""}
+              aria-label={`News item ${candidateIndex + 1} of ${news.length}`}
+              aria-current={candidateIndex === index}
+              onClick={() => setIndex(candidateIndex)}
+              key={candidate.image}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="news-info" aria-live="polite">
+        <p className="news-count">
+          {String(index + 1).padStart(2, "0")} / {String(news.length).padStart(2, "0")}
+        </p>
+        <h3>{item.title}</h3>
+        <p>{item.text}</p>
+      </div>
+    </div>
+  );
+}
+
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
@@ -602,29 +653,10 @@ function App() {
           </div>
         </section>
 
-        <section className="section" id="lessons">
+        <section className="section" id="news">
           <div className="page-shell">
-            <SectionHead kicker="05 · Lessons from flight" title="Every fix started from a recorded flight">
-              <p>
-                We recorded each flight, found what went wrong, and checked each fix against a model of the drone built from
-                its own flight logs.
-              </p>
-            </SectionHead>
-            <div className="lesson-grid">
-              {lessons.map((lesson) => (
-                <article key={lesson.title}>
-                  <h3>{lesson.title}</h3>
-                  <p className="lesson-before">
-                    <span>Before</span>
-                    <s>{lesson.before}</s>
-                  </p>
-                  <p className="lesson-after">
-                    <span>After</span>
-                    {lesson.after}
-                  </p>
-                </article>
-              ))}
-            </div>
+            <SectionHead kicker="05 · News" title="Recent news" />
+            <NewsSlides />
           </div>
         </section>
 

@@ -1,4 +1,4 @@
-import { flightPair, type FlightPair } from "./media";
+import { flightPair, withBase, type FlightPair } from "./media";
 
 // Everything the homepage says. Technical detail lives in the docs (/docs/) and in the
 // svg_ground_control package of AirStack; this page explains the project at a high level.
@@ -247,9 +247,26 @@ export const basestationFeatures = [
   },
 ];
 
-export const lessons = [
-  { title: "Stopping on a goal", before: "1.0 m overshoot", after: "about 5 cm" },
-  { title: "Stopping at a virtual wall", before: "up to 0.68 m past it", after: "within 2 cm" },
-  { title: "Hovering before the start", before: "±15 cm sway", after: "about 1 mm" },
-  { title: "Emergency hold at 6 m/s", before: "1.5 m bounce back", after: "stops at a predicted point" },
+// News slides, newest first. Photos live in public/static/media/photos/.
+export type NewsItem = { title: string; text: string; image: string; alt: string };
+
+export const news: NewsItem[] = [
+  {
+    title: "IROS 2026",
+    text: "We are happy to present our uncrashable system to about 200 visitors during the IROS RIC Open Day!",
+    image: withBase("/static/media/photos/iros-team.jpg"),
+    alt: "Three team members standing beside the Strike vs Guard screen at the IROS 2026 RIC Open Day",
+  },
+  {
+    title: "IROS 2026",
+    text: "The team from ST Engineering liked our demo during the IROS RIC Open Day!",
+    image: withBase("/static/media/photos/iros-ste.jpg"),
+    alt: "Visitors from ST Engineering with the team at the Strike vs Guard demo booth",
+  },
+  {
+    title: "IROS 2026",
+    text: "We are happy to welcome all the teams from HTX, ST Engineering, NUS and UPenn!",
+    image: withBase("/static/media/photos/iros-all.jpg"),
+    alt: "Members of all the partner teams standing together in CMU's flight room",
+  },
 ];
