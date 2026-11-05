@@ -463,7 +463,7 @@ function App() {
 
         <section className="section" id="game">
           <div className="page-shell">
-            <SectionHead kicker="01 · The game" title="A benchmark for teams of drones">
+            <SectionHead kicker="01 · The game" title="A playground for teams of drones">
               <p>
                 Strike vs Guard is a game we use to test how drone teams coordinate, adapt and stay safe when every drone is
                 fast and close to the others.
